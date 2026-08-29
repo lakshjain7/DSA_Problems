@@ -4,177 +4,136 @@ Difficulty: Hard
 Topics: Array, Binary Search, Dynamic Programming, Sorting
 
 Problem Statement:
-------------------
-We have `n` jobs, where every job is scheduled to be done from
-`startTime[i]` to `endTime[i]`, obtaining a profit of `profit[i]`.
+We have n jobs, where every job is scheduled to be done from startTime[i] to
+endTime[i], obtaining a profit of profit[i].
 
-You're given the `startTime`, `endTime` and `profit` arrays, return the
-maximum profit you can take such that there are no two jobs in the
-subset with overlapping time range. If you choose a job that ends at
-time `X`, you can choose another job that starts at time `X`.
+You're given the startTime, endTime and profit arrays. Return the maximum profit
+you can take such that there are no two jobs in the subset with overlapping time
+range.
 
-Examples:
----------
+If you choose a job that ends at time X you will be able to start another job
+that starts at time X.
+
 Example 1:
-    Input: startTime = [1,2,3,3], endTime = [3,4,5,6], profit = [50,10,40,70]
+    Input:  startTime = [1,2,3,3], endTime = [3,4,5,6], profit = [50,10,40,70]
     Output: 120
     Explanation: The subset chosen is the first and fourth job.
-    Time range [1-3]+[3-6], we get a profit of 120 = 50 + 70.
+    Time range [1-3]+[3-6], we get profit of 120 = 50 + 70.
 
 Example 2:
-    Input: startTime = [1,2,3,4,6], endTime = [3,5,10,6,9],
-           profit = [20,20,100,70,60]
+    Input:  startTime = [1,2,3,4,6], endTime = [3,5,10,6,9],
+            profit = [20,20,100,70,60]
     Output: 150
     Explanation: The subset chosen is the first, fourth and fifth job.
     Profit obtained 150 = 20 + 70 + 60.
 
 Example 3:
-    Input: startTime = [1,1,1], endTime = [2,3,4], profit = [5,6,4]
+    Input:  startTime = [1,1,1], endTime = [2,3,4], profit = [5,6,4]
     Output: 6
 
 Constraints:
--------------
-- 1 <= startTime.length == endTime.length == profit.length <= 5 * 10^4
-- 1 <= startTime[i] < endTime[i] <= 10^9
-- 1 <= profit[i] <= 10^4
+    - 1 <= startTime.length == endTime.length == profit.length <= 5 * 10^4
+    - 1 <= startTime[i] < endTime[i] <= 10^9
+    - 1 <= profit[i] <= 10^4
 
-Approach:
----------
-Approach 1 - Sort by end time + DP with binary search (implemented as the
-primary solution):
-    This is the classic "weighted interval scheduling" problem.
+--------------------------------------------------------------------------------
+Approach (Sort by end time + DP with binary search):
+This is the weighted interval scheduling problem. The classic solution sorts jobs
+by end time and defines:
 
-    1. Pair up (start, end, profit) for each job and sort the jobs by
-       their end time.
-    2. Let `dp[i]` = the maximum profit achievable using only the first
-       `i` jobs (in end-time sorted order). `dp[0] = 0`.
-    3. For the i-th job (1-indexed, sorted by end time), we have two
-       choices:
-         a) Skip it: profit = dp[i-1].
-         b) Take it: profit = profit[i] + dp[j], where `j` is the number
-            of jobs (in the sorted order) whose end time is <= this job's
-            start time (i.e., the latest job that doesn't conflict).
-       Because the jobs are sorted by end time, the ends of the first
-       `j` jobs form a sorted array, so we can binary search
-       (bisect_right) for the start time of the current job to find `j`
-       in O(log n).
-    4. `dp[i] = max(dp[i-1], profit[i] + dp[j])`.
-    5. The answer is `dp[n]`.
+    dp[i] = maximum profit achievable using only the first i jobs (in end-sorted
+            order).
 
-    Why it works: sorting by end time lets us process jobs in an order
-    where "all jobs compatible with job i that could be taken before it"
-    are exactly a prefix of the dp array, discoverable via binary search
-    on end times, which is what makes the O(n log n) approach correct and
-    efficient (this is a textbook application of DP + binary search for
-    weighted interval scheduling).
+For the i-th job (1-indexed) with (start, end, p), we have two choices:
+    - Skip it:  dp[i-1]
+    - Take it:  p + dp[j], where j is the number of jobs whose end time is
+                <= this job's start time. Because jobs are sorted by end time,
+                that count is found by binary-searching the array of end times
+                for the rightmost end <= start.
 
-Approach 2 (alternative) - Top-down memoized recursion:
-    Sort jobs by start time. Define `solve(i)` = max profit obtainable
-    considering jobs from index `i` onward.
-    - Option A: skip job i -> solve(i + 1).
-    - Option B: take job i -> profit[i] + solve(next), where `next` is
-      the index of the first job (in start-time sorted order) whose start
-      time is >= end time of job i (found via binary search).
-    `solve(i) = max(option A, option B)`, memoized on `i`. Same overall
-    O(n log n) complexity, just phrased as top-down recursion instead of
-    bottom-up DP.
+    dp[i] = max(dp[i-1], p + dp[j])
 
-Complexity Analysis:
----------------------
-Approach 1 (bottom-up DP + binary search):
-    Time:  O(n log n) - O(n log n) to sort, and O(log n) binary search
-           for each of the n jobs.
-    Space: O(n) - dp array and the sorted jobs list.
+The answer is dp[n].
 
-Approach 2 (top-down memoized recursion):
-    Time:  O(n log n) - same reasoning as above.
-    Space: O(n) - memoization cache plus recursion stack (O(n) worst
-           case).
+Why sort by end time:
+Sorting by end time makes "the latest non-conflicting job" a contiguous prefix of
+the sorted order, so a single binary search over end times locates the best
+compatible predecessor. dp is monotonic non-decreasing in i, so dp[j] is the best
+profit among all jobs ending at or before the current job's start.
+
+Complexity:
+    Time:  O(n log n) - sorting plus a binary search per job.
+    Space: O(n) - the dp array and the end-time array.
+
+--------------------------------------------------------------------------------
+Alternative Approach (Sort by start time + heap):
+Sort jobs by start time and use a min-heap keyed by end time. Track the best
+profit realized among all jobs that have already ended; when processing a job,
+pop everything from the heap that ends at or before its start to update that
+running best, then push (end, running_best + profit). The maximum profit ever
+pushed is the answer. Also O(n log n).
 """
 
-from bisect import bisect_right
-from functools import lru_cache
 from typing import List
+from bisect import bisect_right
+import heapq
 
 
-def job_scheduling(
-    startTime: List[int], endTime: List[int], profit: List[int]
-) -> int:
-    """Bottom-up DP with binary search, sorted by end time."""
-    jobs = sorted(zip(startTime, endTime, profit), key=lambda job: job[1])
-    n = len(jobs)
-    ends = [job[1] for job in jobs]
+class Solution:
+    def jobScheduling(
+        self, startTime: List[int], endTime: List[int], profit: List[int]
+    ) -> int:
+        jobs = sorted(zip(endTime, startTime, profit))  # sort by end time
+        ends = [j[0] for j in jobs]
+        n = len(jobs)
 
-    dp = [0] * (n + 1)  # dp[i] = best profit using first i sorted jobs
-    for i in range(1, n + 1):
-        start, end, prof = jobs[i - 1]
-        # Find count of jobs (in ends[0:i-1]) whose end <= start.
-        j = bisect_right(ends, start, 0, i - 1)
-        dp[i] = max(dp[i - 1], prof + dp[j])
+        # dp[i] = best profit using first i jobs (end-sorted). dp[0] = 0.
+        dp = [0] * (n + 1)
+        for i in range(1, n + 1):
+            end, start, p = jobs[i - 1]
+            # Rightmost job index whose end <= start (among jobs[0..i-2]).
+            j = bisect_right(ends, start, 0, i - 1)
+            dp[i] = max(dp[i - 1], dp[j] + p)
 
-    return dp[n]
+        return dp[n]
 
+    def jobScheduling_heap(
+        self, startTime: List[int], endTime: List[int], profit: List[int]
+    ) -> int:
+        jobs = sorted(zip(startTime, endTime, profit))  # sort by start time
+        heap: List[tuple] = []  # (end_time, profit_accumulated_up_to_end)
+        best = 0  # best profit among jobs already finished
+        answer = 0
 
-def job_scheduling_top_down(
-    startTime: List[int], endTime: List[int], profit: List[int]
-) -> int:
-    """Alternative: top-down memoized recursion, sorted by start time."""
-    jobs = sorted(zip(startTime, endTime, profit), key=lambda job: job[0])
-    starts = [job[0] for job in jobs]
-    n = len(jobs)
+        for start, end, p in jobs:
+            while heap and heap[0][0] <= start:
+                _, prof = heapq.heappop(heap)
+                best = max(best, prof)
+            heapq.heappush(heap, (end, best + p))
+            answer = max(answer, best + p)
 
-    @lru_cache(maxsize=None)
-    def solve(i: int) -> int:
-        if i == n:
-            return 0
-        # Skip job i.
-        best = solve(i + 1)
-        # Take job i: find next index whose start >= jobs[i].end.
-        _, end, prof = jobs[i]
-        nxt = bisect_right(starts, end - 1)
-        # bisect_right(starts, end - 1) gives first index with start > end-1,
-        # i.e. start >= end, since starts are integers.
-        best = max(best, prof + solve(nxt))
-        return best
-
-    result = solve(0)
-    solve.cache_clear()
-    return result
+        return answer
 
 
 if __name__ == "__main__":
-    # Example 1
-    assert job_scheduling([1, 2, 3, 3], [3, 4, 5, 6], [50, 10, 40, 70]) == 120
-    assert (
-        job_scheduling_top_down([1, 2, 3, 3], [3, 4, 5, 6], [50, 10, 40, 70]) == 120
-    )
+    sol = Solution()
 
-    # Example 2
-    assert (
-        job_scheduling([1, 2, 3, 4, 6], [3, 5, 10, 6, 9], [20, 20, 100, 70, 60])
-        == 150
-    )
-    assert (
-        job_scheduling_top_down(
-            [1, 2, 3, 4, 6], [3, 5, 10, 6, 9], [20, 20, 100, 70, 60]
+    for method in (sol.jobScheduling, sol.jobScheduling_heap):
+        # Example 1
+        assert method([1, 2, 3, 3], [3, 4, 5, 6], [50, 10, 40, 70]) == 120
+        # Example 2
+        assert (
+            method([1, 2, 3, 4, 6], [3, 5, 10, 6, 9], [20, 20, 100, 70, 60]) == 150
         )
-        == 150
-    )
+        # Example 3
+        assert method([1, 1, 1], [2, 3, 4], [5, 6, 4]) == 6
+        # Single job
+        assert method([5], [9], [7]) == 7
+        # Two overlapping jobs -> pick the more profitable one
+        assert method([1, 2], [10, 3], [5, 100]) == 100
+        # Two non-overlapping jobs (touching endpoints) -> take both
+        assert method([1, 3], [3, 5], [40, 60]) == 100
+        # Chain where taking all is optimal
+        assert method([1, 2, 3, 4], [2, 3, 4, 5], [10, 10, 10, 10]) == 40
 
-    # Example 3
-    assert job_scheduling([1, 1, 1], [2, 3, 4], [5, 6, 4]) == 6
-    assert job_scheduling_top_down([1, 1, 1], [2, 3, 4], [5, 6, 4]) == 6
-
-    # Single job
-    assert job_scheduling([1], [2], [100]) == 100
-
-    # All jobs overlap completely -> take only the best one
-    assert job_scheduling([1, 1, 1, 1], [5, 5, 5, 5], [10, 20, 5, 15]) == 20
-
-    # All jobs are back-to-back (touching endpoints allowed) -> take all
-    assert job_scheduling([1, 3, 5, 7], [3, 5, 7, 9], [10, 10, 10, 10]) == 40
-
-    # Two jobs, non-overlapping -> take both
-    assert job_scheduling([1, 10], [2, 20], [5, 5]) == 10
-
-    print("All tests passed!")
+    print("All tests passed for 1235. Maximum Profit in Job Scheduling")
